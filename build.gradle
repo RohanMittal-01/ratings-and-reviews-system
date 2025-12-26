@@ -32,6 +32,7 @@ ext {
     log4j2Version = '2.22.1'
     postgresqlVersion = '42.7.1'
     hikaricpVersion = '5.1.0'
+    liquibaseVersion = '4.23.2'
 }
 
 dependencies {
@@ -57,6 +58,9 @@ dependencies {
     // Lombok for reducing boilerplate
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+
+    // Liquibase for database migrations
+    implementation "org.liquibase:liquibase-core:${liquibaseVersion}"
     
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

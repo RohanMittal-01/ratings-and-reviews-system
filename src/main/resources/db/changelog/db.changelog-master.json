@@ -1,0 +1,21 @@
+{
+  "databaseChangeLog": [
+    {
+      "changeSet": {
+        "id": "1",
+        "author": "rohan",
+        "changes": [
+          {
+            "sql": "CREATE TABLE applications (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name VARCHAR(255), description TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+          },
+          {
+            "sql": "CREATE TRIGGER update_applications_updated_at BEFORE UPDATE ON applications FOR EACH ROW EXECUTE FUNCTION ratings_reviews.update_updated_at_column();"
+          },
+          {
+            "sql": "CREATE INDEX idx_applications_name_gin_trgm ON applications USING gin (name gin_trgm_ops);"
+          }
+        ]
+      }
+    }
+  ]
+}
