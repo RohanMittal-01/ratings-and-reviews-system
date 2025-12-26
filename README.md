@@ -106,7 +106,7 @@ The application will start on port 8080 by default.
 You can configure the database connection using environment variables:
 
 ```bash
-export DB_URL=jdbc:postgresql://localhost:5432/ratingsdb
+export DB_URL=jdbc:postgresql://localhost:5432/ratings_reviews
 export DB_USERNAME=postgres
 export DB_PASSWORD=postgres
 export DB_POOL_SIZE=10
@@ -206,7 +206,7 @@ docker-compose logs -f postgres-primary
 docker-compose logs -f postgres-replica-1
 
 # Access PostgreSQL
-docker exec -it postgres-primary psql -U postgres -d ratingsdb
+docker exec -it postgres-primary psql -U postgres -d ratings_reviews
 
 # Check replication status
 docker exec -it postgres-primary psql -U postgres -c "SELECT * FROM pg_stat_replication;"

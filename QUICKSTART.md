@@ -35,7 +35,7 @@ You should see all services with status "Up (healthy)".
 Check that the primary node is running:
 
 ```bash
-docker exec -it postgres-primary psql -U postgres -d ratingsdb -c "SELECT version();"
+docker exec -it postgres-primary psql -U postgres -d ratings_reviews -c "SELECT version();"
 ```
 
 Check replication status:
@@ -127,13 +127,13 @@ tail -f logs/database.log
 ### Access PostgreSQL Primary
 
 ```bash
-docker exec -it postgres-primary psql -U postgres -d ratingsdb
+docker exec -it postgres-primary psql -U postgres -d ratings_reviews
 ```
 
 ### Access PostgreSQL Replica
 
 ```bash
-docker exec -it postgres-replica-1 psql -U postgres -d ratingsdb
+docker exec -it postgres-replica-1 psql -U postgres -d ratings_reviews
 ```
 
 ### View Docker Logs
@@ -194,7 +194,7 @@ Edit `src/main/resources/application.yml`:
 ```yaml
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/ratingsdb
+    url: jdbc:postgresql://localhost:5432/ratings_reviews
     username: postgres
     password: postgres
 ```
@@ -202,7 +202,7 @@ spring:
 Or use environment variables:
 
 ```bash
-export DB_URL=jdbc:postgresql://localhost:5432/ratingsdb
+export DB_URL=jdbc:postgresql://localhost:5432/ratings_reviews
 export DB_USERNAME=postgres
 export DB_PASSWORD=postgres
 ./gradlew bootRun

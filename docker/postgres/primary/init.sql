@@ -2,7 +2,7 @@
 -- This script sets up the initial database schema and configuration
 
 -- Create database if not exists (already created by POSTGRES_DB env variable)
--- Database: ratingsdb
+-- Database: ratings_reviews
 
 -- Enable necessary extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -17,16 +17,16 @@ END
 $$;
 
 -- Grant necessary permissions
-GRANT CONNECT ON DATABASE ratingsdb TO replicator;
+GRANT CONNECT ON DATABASE ratings_reviews TO replicator;
 
 -- Create schema for the application
-CREATE SCHEMA IF NOT EXISTS ratings_schema;
+CREATE SCHEMA IF NOT EXISTS ratings_reviews;
 
 -- Set default schema
-SET search_path TO ratings_schema, public;
+SET search_path TO ratings_reviews, public;
 
 -- Example table: applications
-CREATE TABLE IF NOT EXISTS ratings_schema.applications (
+CREATE TABLE IF NOT EXISTS ratings_reviews.applications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS ratings_schema.applications (
 );
 
 -- Example table: users
-CREATE TABLE IF NOT EXISTS ratings_schema.users (
+CREATE TABLE IF NOT EXISTS ratings_reviews.users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     username VARCHAR(100) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -46,10 +46,10 @@ CREATE TABLE IF NOT EXISTS ratings_schema.users (
 );
 
 -- Example table: ratings
-CREATE TABLE IF NOT EXISTS ratings_schema.ratings (
+CREATE TABLE IF NOT EXISTS ratings_reviews.ratings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    application_id UUID NOT NULL REFERENCES ratings_schema.applications(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES ratings_schema.users(id) ON DELETE CASCADE,
+    application_id UUID NOT NULL REFERENCES ratings_reviews.applications(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES ratings_reviews.users(id) ON DELETE CASCADE,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -57,11 +57,11 @@ CREATE TABLE IF NOT EXISTS ratings_schema.ratings (
 );
 
 -- Example table: reviews
-CREATE TABLE IF NOT EXISTS ratings_schema.reviews (
+CREATE TABLE IF NOT EXISTS ratings_reviews.reviews (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    application_id UUID NOT NULL REFERENCES ratings_schema.applications(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES ratings_schema.users(id) ON DELETE CASCADE,
-    rating_id UUID REFERENCES ratings_schema.ratings(id) ON DELETE CASCADE,
+    application_id UUID NOT NULL REFERENCES ratings_reviews.applications(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES ratings_reviews.users(id) ON DELETE CASCADE,
+    rating_id UUID REFERENCES ratings_reviews.ratings(id) ON DELETE CASCADE,
     title VARCHAR(255),
     comment TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -69,14 +69,14 @@ CREATE TABLE IF NOT EXISTS ratings_schema.reviews (
 );
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_ratings_application_id ON ratings_schema.ratings(application_id);
-CREATE INDEX IF NOT EXISTS idx_ratings_user_id ON ratings_schema.ratings(user_id);
-CREATE INDEX IF NOT EXISTS idx_reviews_application_id ON ratings_schema.reviews(application_id);
-CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON ratings_schema.reviews(user_id);
-CREATE INDEX IF NOT EXISTS idx_reviews_rating_id ON ratings_schema.reviews(rating_id);
+CREATE INDEX IF NOT EXISTS idx_ratings_application_id ON ratings_reviews.ratings(application_id);
+CREATE INDEX IF NOT EXISTS idx_ratings_user_id ON ratings_reviews.ratings(user_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_application_id ON ratings_reviews.reviews(application_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON ratings_reviews.reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_rating_id ON ratings_reviews.reviews(rating_id);
 
 -- Create function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION ratings_schema.update_updated_at_column()
+CREATE OR REPLACE FUNCTION ratings_reviews.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
@@ -85,17 +85,17 @@ END;
 $$ language 'plpgsql';
 
 -- Create triggers for automatic timestamp updates
-CREATE TRIGGER update_applications_updated_at BEFORE UPDATE ON ratings_schema.applications
-    FOR EACH ROW EXECUTE FUNCTION ratings_schema.update_updated_at_column();
+CREATE TRIGGER update_applications_updated_at BEFORE UPDATE ON ratings_reviews.applications
+    FOR EACH ROW EXECUTE FUNCTION ratings_reviews.update_updated_at_column();
 
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON ratings_schema.users
-    FOR EACH ROW EXECUTE FUNCTION ratings_schema.update_updated_at_column();
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON ratings_reviews.users
+    FOR EACH ROW EXECUTE FUNCTION ratings_reviews.update_updated_at_column();
 
-CREATE TRIGGER update_ratings_updated_at BEFORE UPDATE ON ratings_schema.ratings
-    FOR EACH ROW EXECUTE FUNCTION ratings_schema.update_updated_at_column();
+CREATE TRIGGER update_ratings_updated_at BEFORE UPDATE ON ratings_reviews.ratings
+    FOR EACH ROW EXECUTE FUNCTION ratings_reviews.update_updated_at_column();
 
-CREATE TRIGGER update_reviews_updated_at BEFORE UPDATE ON ratings_schema.reviews
-    FOR EACH ROW EXECUTE FUNCTION ratings_schema.update_updated_at_column();
+CREATE TRIGGER update_reviews_updated_at BEFORE UPDATE ON ratings_reviews.reviews
+    FOR EACH ROW EXECUTE FUNCTION ratings_reviews.update_updated_at_column();
 
 -- Log initialization
 DO $$

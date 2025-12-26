@@ -8,7 +8,10 @@ group = 'com.ratingsandreviews'
 version = '1.0.0-SNAPSHOT'
 
 java {
-    sourceCompatibility = '17'
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+        vendor = JvmVendorSpec.AMAZON
+    }
 }
 
 configurations {
