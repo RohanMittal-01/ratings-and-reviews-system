@@ -1,0 +1,71 @@
+spring:
+  application:
+    name: ratings-and-reviews-system
+  
+  # DataSource Configuration
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ratingsdb}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    
+    # HikariCP Configuration
+    hikari:
+      pool-name: RatingsAndReviewsPool
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: ${DB_MIN_IDLE:5}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:30000}
+      idle-timeout: ${DB_IDLE_TIMEOUT:600000}
+      max-lifetime: ${DB_MAX_LIFETIME:1800000}
+      auto-commit: true
+      connection-test-query: SELECT 1
+      leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD:60000}
+      
+      # PostgreSQL specific optimizations
+      data-source-properties:
+        cachePrepStmts: true
+        prepStmtCacheSize: 250
+        prepStmtCacheSqlLimit: 2048
+        useServerPrepStmts: true
+        reWriteBatchedInserts: true
+  
+  # JPA Configuration
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+  
+  # Server Configuration
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Logging Configuration
+logging:
+  config: classpath:log4j2.xml
+  level:
+    com.ratingsandreviews: DEBUG
+    org.springframework: INFO
+    org.hibernate: WARN
+    com.zaxxer.hikari: INFO
+
+# Application Configuration
+application:
+  name: Ratings and Reviews System
+  version: 1.0.0
+  description: A PlayStore like Application system for Ratings and Reviews
