@@ -28,7 +28,7 @@ public final class DBConnection {
         HikariConfig config = new HikariConfig();
         
         // Database connection properties
-        config.setJdbcUrl(getProperty("DB_URL", "jdbc:postgresql://localhost:5432/ratingsdb"));
+        config.setJdbcUrl(getProperty("DB_URL", "jdbc:postgresql://localhost:5432/ratings_reviews"));
         config.setUsername(getProperty("DB_USERNAME", "postgres"));
         config.setPassword(getProperty("DB_PASSWORD", "postgres"));
         config.setDriverClassName("org.postgresql.Driver");
