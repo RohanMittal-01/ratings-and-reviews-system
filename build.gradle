@@ -1,0 +1,70 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.1'
+    id 'io.spring.dependency-management' version '1.1.4'
+}
+
+group = 'com.ratingsandreviews'
+version = '1.0.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = '17'
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+    all {
+        // Exclude Logback to use Log4j2
+        exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    log4j2Version = '2.22.1'
+    postgresqlVersion = '42.7.1'
+    hikaricpVersion = '5.1.0'
+}
+
+dependencies {
+    // Spring Boot Starters
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    
+    // Log4j2 with SLF4J
+    implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+    implementation "org.apache.logging.log4j:log4j-api:${log4j2Version}"
+    implementation "org.apache.logging.log4j:log4j-core:${log4j2Version}"
+    implementation "org.apache.logging.log4j:log4j-slf4j2-impl:${log4j2Version}"
+    
+    // PostgreSQL Driver
+    implementation "org.postgresql:postgresql:${postgresqlVersion}"
+    
+    // HikariCP for connection pooling
+    implementation "com.zaxxer:HikariCP:${hikaricpVersion}"
+    
+    // Spring Boot Configuration Processor
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    
+    // Lombok for reducing boilerplate
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'com.h2database:h2:2.2.224'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// Configure bootJar task
+tasks.named('bootJar') {
+    archiveFileName = "${project.name}-${project.version}.jar"
+}
