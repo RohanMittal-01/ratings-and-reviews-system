@@ -58,6 +58,19 @@ spring:
           min-idle: 2
           max-wait: 3000
 
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9093}
+    producer:
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: comment-persistence-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+
   # Server Configuration
 server:
   port: ${SERVER_PORT:8080}

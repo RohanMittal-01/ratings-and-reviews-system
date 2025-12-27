@@ -151,6 +151,10 @@ volumes:
     driver: local
   redis-data:
     driver: local
+  kafka-data:
+    driver: local
+  zookeeper-data:
+    driver: local
 
 networks:
   ratings-network:
