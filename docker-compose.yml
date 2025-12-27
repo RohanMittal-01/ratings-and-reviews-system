@@ -125,6 +125,41 @@ services:
       timeout: 5s
       retries: 5
 
+  # Ratings and Reviews Application
+  ratings-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ratings-app
+    environment:
+      # Database connection
+      DB_URL: ${DB_URL:-jdbc:postgresql://postgres-primary:5432/ratings_reviews}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      # Connection pool settings
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      DB_MIN_IDLE: ${DB_MIN_IDLE:-5}
+      DB_CONNECTION_TIMEOUT: ${DB_CONNECTION_TIMEOUT:-30000}
+      DB_IDLE_TIMEOUT: ${DB_IDLE_TIMEOUT:-600000}
+      DB_MAX_LIFETIME: ${DB_MAX_LIFETIME:-1800000}
+      # Server configuration
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      # Spring profiles
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+    ports:
+      - "8080:8080"
+    networks:
+      - ratings-network
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 volumes:
   postgres-primary-data:
     driver: local
