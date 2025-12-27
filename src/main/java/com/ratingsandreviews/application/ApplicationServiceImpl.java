@@ -1,5 +1,7 @@
 package com.ratingsandreviews.application;
 
+import com.ratingsandreviews.cache.CacheKeyBuilder;
+import com.ratingsandreviews.cache.CacheService;
 import com.ratingsandreviews.util.AppLogger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -13,20 +15,43 @@ public class ApplicationServiceImpl implements ApplicationService {
     private static final AppLogger logger = AppLogger.getInstance(ApplicationServiceImpl.class);
 
     private final ApplicationRepositoryWrapper applicationRepository;
+    private final CacheService redisCache;
 
     @Autowired
-    public ApplicationServiceImpl(ApplicationRepositoryWrapper applicationRepository) {
+    public ApplicationServiceImpl(ApplicationRepositoryWrapper applicationRepository, CacheService redisCacheService) {
         this.applicationRepository = applicationRepository;
+        this.redisCache = redisCacheService;
     }
 
     @Override
     public Application getApplication(String applicationId) {
-        return this.applicationRepository.getApplication(applicationId);
+        // Check cache first
+        String cacheKey = CacheKeyBuilder.applicationKey(applicationId);
+        Application cached = redisCache.get(cacheKey, Application.class);
+        if (cached != null) {
+            return cached;
+        }
+
+        Application application = this.applicationRepository.getApplication(applicationId);
+        if (application != null) {
+            redisCache.put(cacheKey, application);
+        }
+        return application;
     }
 
     @Override
     public Page<Application> getApplications(String filterKey, String filterValue, Pageable pageable) {
-        return this.applicationRepository.getApplications(filterKey, filterValue, pageable);
+        // Cache paginated application lists
+        String cacheKey = CacheKeyBuilder.applicationsPageKey(filterKey, filterValue, pageable.getPageNumber(), pageable.getPageSize());
+        @SuppressWarnings("unchecked")
+        Page<Application> cached = redisCache.get(cacheKey, Page.class);
+        if (cached != null) {
+            return cached;
+        }
+
+        Page<Application> page = this.applicationRepository.getApplications(filterKey, filterValue, pageable);
+        redisCache.put(cacheKey, page);
+        return page;
     }
 
     @Override

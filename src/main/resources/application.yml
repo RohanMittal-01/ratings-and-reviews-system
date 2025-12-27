@@ -44,6 +44,20 @@ spring:
         order_inserts: true
         order_updates: true
   
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:3000}
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 2
+          max-wait: 3000
+
   # Server Configuration
 server:
   port: ${SERVER_PORT:8080}

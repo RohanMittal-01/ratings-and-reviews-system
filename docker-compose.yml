@@ -125,12 +125,31 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis for distributed caching
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis-cache
+    command: redis-server --appendonly yes --requirepass ""
+    ports:
+      - "6380:6379"  # Using 6380 externally to avoid conflicts with local Redis
+    volumes:
+      - redis-data:/data
+    networks:
+      - ratings-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
 volumes:
   postgres-primary-data:
     driver: local
   postgres-replica-1-data:
     driver: local
   postgres-replica-2-data:
+    driver: local
+  redis-data:
     driver: local
 
 networks:
