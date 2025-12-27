@@ -1,5 +1,7 @@
 package com.ratingsandreviews.comment;
 
+import com.ratingsandreviews.cache.CacheKeyBuilder;
+import com.ratingsandreviews.cache.CacheService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,29 +16,45 @@ import static com.ratingsandreviews.util.Validations.validateOptionalExistence;
 @Service
 public class CommentServiceImpl implements CommentService {
     private final CommentRepository repository;
+    private final CacheService caffeineCache;
 
     @Autowired
-    public CommentServiceImpl(CommentRepository repository) {
+    public CommentServiceImpl(CommentRepository repository, CacheService caffeineCacheService) {
         this.repository = repository;
+        this.caffeineCache = caffeineCacheService;
     }
 
     @Override
     public Page<Comment> getComments(UUID applicationId, UUID parentId, Integer sentiment, Pageable pageable, UUID userId) {
+        // Cache only when userId is present (user-specific view)
         if (userId != null) {
+            String cacheKey = CacheKeyBuilder.commentsKey(
+                applicationId.toString(),
+                parentId != null ? parentId.toString() : "null",
+                sentiment,
+                userId.toString(),
+                pageable.getPageNumber(),
+                pageable.getPageSize()
+            );
+
+            @SuppressWarnings("unchecked")
+            Page<Comment> cached = caffeineCache.get(cacheKey, Page.class);
+            if (cached != null) {
+                return cached;
+            }
+
             // 1. Get user's comments and their context (full chain from root to user comment)
             UserCommentsResponse userResp = getUserCommentsForApplication(applicationId, userId, pageable, sentiment);
             Set<UUID> userAndContextIds = new HashSet<>();
-            Map<UUID, Comment> rootMap = new LinkedHashMap<>(); // rootId -> root Comment (with children)
+            Map<UUID, Comment> rootMap = new LinkedHashMap<>();
             for (CommentThreadView thread : userResp.getThreads()) {
                 List<Comment> chain = new ArrayList<>(thread.getContext());
                 chain.add(thread.getTarget());
                 if (chain.isEmpty()) continue;
                 Comment root = chain.get(0);
-                // Traverse down the chain, building/attaching children
                 Comment current = rootMap.computeIfAbsent(root.getId(), id -> cloneCommentWithoutChildren(root));
                 for (int i = 1; i < chain.size(); i++) {
                     Comment next = chain.get(i);
-                    // Find or add child to current
                     Optional<Comment> existingChild = current.getChildren().stream().filter(c -> c.getId().equals(next.getId())).findFirst();
                     if (existingChild.isPresent()) {
                         current = existingChild.get();
@@ -48,19 +66,20 @@ public class CommentServiceImpl implements CommentService {
                 }
                 userAndContextIds.addAll(chain.stream().map(Comment::getId).toList());
             }
-            // 2. Fill the rest with other root comments (level 0, not already included)
             List<Comment> others = repository.findByApplicationId(applicationId, pageable).stream()
                 .filter(c -> c.getLevel() == 0 && !userAndContextIds.contains(c.getId()))
                 .toList();
             List<Comment> result = new ArrayList<>(rootMap.values());
             result.addAll(others);
-            // Paginate result manually
             int from = (int) pageable.getOffset();
             int to = Math.min(from + pageable.getPageSize(), result.size());
             List<Comment> pageContent = from < to ? result.subList(from, to) : Collections.emptyList();
-            return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, result.size());
+            Page<Comment> page = new org.springframework.data.domain.PageImpl<>(pageContent, pageable, result.size());
+
+            caffeineCache.put(cacheKey, page);
+            return page;
         } else {
-            // Default logic
+            // Default logic - no caching for non-user-specific queries
             Page<Comment> page;
             if (sentiment != null) {
                 page = repository.findByApplicationIdAndParentIdAndSentiment(applicationId, parentId, sentiment, pageable);
@@ -82,7 +101,12 @@ public class CommentServiceImpl implements CommentService {
             long parentLevel = parent.getLevel();
             comment.setLevel(parentLevel + 1);
         }
-        return repository.save(comment);
+        Comment saved = repository.save(comment);
+
+        // Evict ALL cache entries for this user on this application
+        evictUserSpecificCache(saved.getApplicationId(), saved.getUserId());
+
+        return saved;
     }
 
     @Override
@@ -90,17 +114,36 @@ public class CommentServiceImpl implements CommentService {
         Comment existing = validateOptionalExistence(repository.findById(id), Comment.class, "Comment");
         if(updatedText != null) existing.setText(updatedText);
         if(sentiment != null && existing.getLevel() == 0) existing.setSentiment(sentiment);
-        return repository.save(existing);
+        Comment updated = repository.save(existing);
+
+        // Evict ALL cache entries for this user on this application
+        evictUserSpecificCache(updated.getApplicationId(), updated.getUserId());
+
+        return updated;
     }
 
     @Override
     public void deleteComment(UUID id) {
-        // handled cascading delete via column definition
+        Comment comment = validateOptionalExistence(repository.findById(id), Comment.class, "Comment");
+
+        // Evict ALL cache entries for this user on this application
+        evictUserSpecificCache(comment.getApplicationId(), comment.getUserId());
+
         repository.deleteById(id);
     }
 
     @Override
     public List<Comment> getCommentTree(UUID applicationId, UUID userId) {
+        // Cache the tree for user-specific requests
+        if (userId != null) {
+            String cacheKey = CacheKeyBuilder.commentTreeKey(applicationId.toString(), userId.toString());
+            @SuppressWarnings("unchecked")
+            List<Comment> cached = caffeineCache.get(cacheKey, List.class);
+            if (cached != null) {
+                return cached;
+            }
+        }
+
         List<Comment> all = repository.findAll().stream().filter(c -> applicationId.equals(c.getApplicationId())).collect(Collectors.toList());
         Map<UUID, Comment> byId = all.stream().collect(Collectors.toMap(Comment::getId, c -> c));
         Set<UUID> included = new HashSet<>();
@@ -137,6 +180,9 @@ public class CommentServiceImpl implements CommentService {
                     }
                 }
             }
+
+            String cacheKey = CacheKeyBuilder.commentTreeKey(applicationId.toString(), userId.toString());
+            caffeineCache.put(cacheKey, roots);
         } else {
             // Default logic
             for (Comment c : all) {
@@ -152,6 +198,24 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public UserCommentsResponse getUserCommentsForApplication(UUID applicationId, UUID userId, Pageable pageable, Integer sentiment) {
+        // Cache user-specific comment queries
+        // Handle Pageable.unpaged() which doesn't support getPageNumber() and getPageSize()
+        int pageNumber = pageable.isPaged() ? pageable.getPageNumber() : -1;
+        int pageSize = pageable.isPaged() ? pageable.getPageSize() : -1;
+
+        String cacheKey = CacheKeyBuilder.userCommentsKey(
+            applicationId.toString(),
+            userId.toString(),
+            sentiment,
+            pageNumber,
+            pageSize
+        );
+
+        UserCommentsResponse cached = caffeineCache.get(cacheKey, UserCommentsResponse.class);
+        if (cached != null) {
+            return cached;
+        }
+
         Page<Comment> userCommentsPage = (sentiment != null)
             ? repository.findByApplicationIdAndUserIdAndSentiment(applicationId, userId, sentiment, pageable)
             : repository.findByApplicationIdAndUserId(applicationId, userId, pageable);
@@ -166,7 +230,10 @@ public class CommentServiceImpl implements CommentService {
             List<Comment> chain = lineageMap.getOrDefault(target.getId(), new ArrayList<>());
             return new CommentThreadView(target, chain);
         }).collect(Collectors.toList());
-        return new UserCommentsResponse(threads, userCommentsPage.getTotalElements());
+        UserCommentsResponse response = new UserCommentsResponse(threads, userCommentsPage.getTotalElements());
+
+        caffeineCache.put(cacheKey, response);
+        return response;
     }
 
     private Map<UUID, List<Comment>> buildLineageMap(List<Comment> targets, List<Comment> pool) {
@@ -199,5 +266,48 @@ public class CommentServiceImpl implements CommentService {
         copy.setUpdatedAt(c.getUpdatedAt());
         copy.setChildren(new ArrayList<>());
         return copy;
+    }
+
+    /**
+     * Evicts ALL cache entries for a specific user on a specific application.
+     * This ensures strong consistency for the active user while allowing
+     * eventual consistency (up to TTL) for other users.
+     *
+     * Evicts:
+     * 1. getUserCommentsForApplication - ALL variants (all pages, all sentiment filters)
+     *    Pattern: comments:user:{userId}:app:{appId}:*
+     *
+     * 2. getComments - ALL variants where this user is in the key
+     *    Pattern: comments:app:{appId}:parent:*:sentiment:*:user:{userId}:*
+     *
+     * 3. getCommentTree - ONLY this user's tree view (not other users)
+     *    Pattern: comments:tree:{appId}:user:{userId}
+     *
+     * This targeted eviction ensures:
+     * - User A sees their changes immediately (strong consistency)
+     * - User B's cache on same instance is NOT evicted (eventual consistency)
+     * - User C on another instance keeps their cache (eventual consistency)
+     */
+    private void evictUserSpecificCache(UUID applicationId, UUID userId) {
+        String appIdStr = applicationId.toString();
+        String userIdStr = userId.toString();
+
+        // Evict ALL getUserCommentsForApplication cache entries for this user on this app
+        // Pattern: comments:user:{userId}:app:{appId}:*
+        // This catches all sentiment filters and pagination variants
+        String userCommentsPrefix = "comments:user:" + userIdStr + ":app:" + appIdStr;
+        caffeineCache.evictPattern(userCommentsPrefix);
+
+        // Evict ALL getComments cache entries that include this userId
+        // Pattern: comments:app:{appId}:parent:*:sentiment:*:user:{userId}:*
+        // This catches all parent filters, sentiment filters, and pagination variants
+        // Using wildcards to match userId in the middle of the key
+        String commentsWithUserPattern = "comments:app:" + appIdStr + ":parent:*:sentiment:*:user:" + userIdStr + ":*";
+        caffeineCache.evictPattern(commentsWithUserPattern);
+
+        // Evict getCommentTree ONLY for this specific user (not all users)
+        // Pattern: comments:tree:{appId}:user:{userId}
+        String treeKey = "comments:tree:" + appIdStr + ":user:" + userIdStr;
+        caffeineCache.evictPattern(treeKey);
     }
 }

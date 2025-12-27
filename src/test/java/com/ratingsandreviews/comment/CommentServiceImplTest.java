@@ -1,5 +1,6 @@
 package com.ratingsandreviews.comment;
 
+import com.ratingsandreviews.cache.CacheService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -21,6 +22,9 @@ class CommentServiceImplTest {
     @Mock
     private CommentRepository repository;
 
+    @Mock
+    private CacheService caffeineCacheService;
+
     @InjectMocks
     private CommentServiceImpl service;
 
@@ -36,21 +40,27 @@ class CommentServiceImplTest {
         parent.setLevel(0);
         Comment child = new Comment();
         child.setParentId(parent.getId());
+        child.setUserId(UUID.randomUUID());
+        child.setApplicationId(UUID.randomUUID());
         when(repository.findById(parent.getId())).thenReturn(Optional.of(parent));
         when(repository.save(any(Comment.class))).thenAnswer(inv -> inv.getArgument(0));
         Comment saved = service.addComment(child);
         assertEquals(1, saved.getLevel());
         assertNotNull(saved.getCreatedAt());
         assertNotNull(saved.getUpdatedAt());
+        verify(caffeineCacheService, atLeastOnce()).evictPattern(anyString());
     }
 
     @Test
     void addComment_root_setsLevelZero() {
         Comment root = new Comment();
         root.setParentId(null);
+        root.setUserId(UUID.randomUUID());
+        root.setApplicationId(UUID.randomUUID());
         when(repository.save(any(Comment.class))).thenAnswer(inv -> inv.getArgument(0));
         Comment saved = service.addComment(root);
         assertEquals(0, saved.getLevel());
+        verify(caffeineCacheService, atLeastOnce()).evictPattern(anyString());
     }
 
     @Test
@@ -58,18 +68,27 @@ class CommentServiceImplTest {
         Comment existing = new Comment();
         existing.setId(UUID.randomUUID());
         existing.setLevel(0);
+        existing.setUserId(UUID.randomUUID());
+        existing.setApplicationId(UUID.randomUUID());
         when(repository.findById(existing.getId())).thenReturn(Optional.of(existing));
         when(repository.save(any(Comment.class))).thenAnswer(inv -> inv.getArgument(0));
         Comment updated = service.updateComment(existing.getId(), "new text", (short) 1);
         assertEquals("new text", updated.getText());
         assertEquals(Short.valueOf((short)1), updated.getSentiment());
+        verify(caffeineCacheService, atLeastOnce()).evictPattern(anyString());
     }
 
     @Test
     void deleteComment_deletesById() {
         UUID id = UUID.randomUUID();
+        Comment existing = new Comment();
+        existing.setId(id);
+        existing.setUserId(UUID.randomUUID());
+        existing.setApplicationId(UUID.randomUUID());
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
         service.deleteComment(id);
         verify(repository).deleteById(id);
+        verify(caffeineCacheService, atLeastOnce()).evictPattern(anyString());
     }
 
     @Test
@@ -87,6 +106,8 @@ class CommentServiceImplTest {
         userComment.setLevel(1);
         userComment.setUserId(userId);
         Page<Comment> userPage = new PageImpl<>(List.of(userComment));
+        // Mock all cache calls to return null (cache miss)
+        when(caffeineCacheService.get(anyString(), any())).thenReturn(null);
         when(repository.findByApplicationIdAndUserId(appId, userId, PageRequest.of(0, 10))).thenReturn(userPage);
         when(repository.findAncestorsForComments(anyList())).thenReturn(List.of(root));
         when(repository.findByApplicationId(appId, PageRequest.of(0, 10))).thenReturn(new PageImpl<>(List.of(root)));
@@ -94,6 +115,7 @@ class CommentServiceImplTest {
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getChildren()).isNotEmpty();
         assertThat(result.getContent().get(0).getChildren().get(0).getId()).isEqualTo(userComment.getId());
+        verify(caffeineCacheService, atLeastOnce()).put(anyString(), any());
     }
 
     @Test
@@ -123,13 +145,16 @@ class CommentServiceImplTest {
         userComment.setParentId(root.getId());
         userComment.setLevel(1);
         userComment.setUserId(userId);
+        // Mock all cache calls to return null (cache miss)
+        when(caffeineCacheService.get(anyString(), any())).thenReturn(null);
         when(repository.findByApplicationIdAndUserId(appId, userId, Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(userComment)));
         when(repository.findAncestorsForComments(anyList())).thenReturn(List.of(root));
-        when(repository.findAll()).thenReturn(List.of(root, userComment));
+        when(repository.findAll()).thenReturn(new ArrayList<>(List.of(root, userComment)));
         List<Comment> result = service.getCommentTree(appId, userId);
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getChildren()).isNotEmpty();
         assertThat(result.get(0).getChildren().get(0).getId()).isEqualTo(userComment.getId());
+        verify(caffeineCacheService, atLeastOnce()).put(anyString(), any());
     }
 
     @Test
@@ -144,3 +169,4 @@ class CommentServiceImplTest {
         assertThat(result).hasSize(1);
     }
 }
+
