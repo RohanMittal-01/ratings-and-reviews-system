@@ -44,6 +44,13 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
 
+    // Kafka for Event-Driven Architecture
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    // Lombok for reducing boilerplate
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
     // Log4j2 with SLF4J
     implementation 'org.springframework.boot:spring-boot-starter-log4j2'
     implementation "org.apache.logging.log4j:log4j-api:${log4j2Version}"
