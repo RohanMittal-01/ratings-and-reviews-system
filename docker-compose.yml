@@ -125,6 +125,23 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis for distributed caching
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis-cache
+    command: redis-server --appendonly yes --requirepass ""
+    ports:
+      - "6380:6379"  # Using 6380 externally to avoid conflicts with local Redis
+    volumes:
+      - redis-data:/data
+    networks:
+      - ratings-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   # Ratings and Reviews Application
   ratings-app:
     build:
@@ -142,6 +159,10 @@ services:
       DB_CONNECTION_TIMEOUT: ${DB_CONNECTION_TIMEOUT:-30000}
       DB_IDLE_TIMEOUT: ${DB_IDLE_TIMEOUT:-600000}
       DB_MAX_LIFETIME: ${DB_MAX_LIFETIME:-1800000}
+      # Redis connection
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       # Server configuration
       SERVER_PORT: ${SERVER_PORT:-8080}
       # Spring profiles
@@ -152,6 +173,8 @@ services:
       - ratings-network
     depends_on:
       postgres-primary:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
@@ -166,6 +189,8 @@ volumes:
   postgres-replica-1-data:
     driver: local
   postgres-replica-2-data:
+    driver: local
+  redis-data:
     driver: local
 
 networks:

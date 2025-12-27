@@ -80,6 +80,7 @@ This will start:
 - PostgreSQL replica-1 on port 5433
 - PostgreSQL replica-2 on port 5434
 - PgBouncer on port 6432
+- Redis cache on port 6380
 - **Ratings and Reviews Application on port 8080**
 
 #### 3. Verify Services are Running
@@ -181,6 +182,11 @@ DB_MIN_IDLE=5
 DB_CONNECTION_TIMEOUT=30000
 DB_IDLE_TIMEOUT=600000
 DB_MAX_LIFETIME=1800000
+
+# Redis connection
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=
 
 # Server configuration
 SERVER_PORT=8080
