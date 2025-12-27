@@ -249,10 +249,13 @@ The initial schema includes:
 java -jar build/libs/ratings-and-reviews-system-1.0.0-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
-## TODO List
+## TODO List (Future Scope)
 - [ ] Implement user authentication and authorization
 - [ ] Add an Event driven Architecture (EDA) for better scalability (already present in beta branch)
-- [] Comments updated using Kafka messaging (already present in beta branch)
+- [ ] Comments updated using Kafka messaging (already present in beta branch)
+- [ ] Provide Documentation using Swagger/OpenAPI (copilot PR open)
+- [ ] Add more unit and integration tests
+- [ ] Benchmark performance under load using JMeter
 
 ## Contributing
 
