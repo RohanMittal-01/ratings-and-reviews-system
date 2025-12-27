@@ -11,13 +11,10 @@ COPY gradle.properties .
 COPY settings.gradle .
 COPY build.gradle .
 
-# Download dependencies (cached layer)
-RUN ./gradlew dependencies --no-daemon
-
 # Copy source code
 COPY src src
 
-# Build the application
+# Build the application (dependencies will be downloaded automatically)
 RUN ./gradlew clean bootJar --no-daemon
 
 # Stage 2: Runtime image with JRE

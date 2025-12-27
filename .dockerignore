@@ -1,0 +1,52 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Build artifacts
+build/
+target/
+bin/
+out/
+*.jar
+*.war
+*.ear
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# Gradle cache (will be rebuilt in Docker)
+.gradle/
+
+# Logs
+logs/
+*.log
+
+# Documentation (not needed in build)
+*.md
+ARCHITECTURE.md
+QUICKSTART.md
+LICENSE
+
+# Test files (not needed at runtime)
+src/test/
+
+# Docker files (not needed in image)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
