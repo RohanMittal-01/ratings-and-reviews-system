@@ -1,6 +1,10 @@
 package com.ratingsandreviews.application;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,8 +25,15 @@ public class ApplicationController {
     }
 
     @GetMapping
-    public List<Application> getApplications(@RequestParam(required = false) String filterKey, @RequestParam(required = false) String filterValue, @RequestParam (required = false) String sort, @RequestParam(required = false) String order, @RequestParam (required = false) Integer page, @RequestParam (required = false) Integer size) {
-        return this.applicationService.getApplications(filterKey, filterKey, sort, order, page, size);
+    public Page<Application> getApplications(@RequestParam(required = false) String filterKey,
+                                             @RequestParam(required = false) String filterValue,
+                                             @RequestParam (defaultValue = "updatedAt") String sortBy,
+                                             @RequestParam(defaultValue = "desc") String order,
+                                             @RequestParam (defaultValue = "0") Integer page,
+                                             @RequestParam (defaultValue = "10") Integer size) {
+        Sort sort = order.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return this.applicationService.getApplications(filterKey, filterValue, pageable);
     }
 
     @PostMapping(value = "/install")

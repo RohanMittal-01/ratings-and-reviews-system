@@ -1,10 +1,11 @@
 package com.ratingsandreviews.application;
 
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public class AllFilterStrategy implements FilterStrategy {
     @Override
-    public List<Application> filter(ApplicationRepository repository, String filterValue) {
-        return repository.findAll();
+    public Page<Application> filter(ApplicationRepository repository, String filterValue, Pageable pageable) {
+        return repository.findAll(pageable);
     }
 }

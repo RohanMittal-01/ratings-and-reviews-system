@@ -1,15 +1,15 @@
 package com.ratingsandreviews.application;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static com.ratingsandreviews.util.Validations.validateOptionalExistence;
 
-@Service
+@Component
 public class ApplicationRepositoryWrapper {
     private final ApplicationRepository applicationRepository;
 
@@ -20,13 +20,11 @@ public class ApplicationRepositoryWrapper {
 
     Application getApplication(String applicationId) {
         UUID uuid = UUID.fromString(applicationId);
-        Optional<Application> applicationOptional = this.applicationRepository.findById(uuid);
-        validateOptionalExistence(applicationOptional, Application.class, uuid.toString());
-        return this.applicationRepository.findById(UUID.fromString(applicationId)).orElse(null);
+        return validateOptionalExistence(this.applicationRepository.findById(uuid), Application.class, uuid.toString());
     }
 
-    List<Application> getApplications(String filterKey, String filterValue, String sort, String order, Integer page, Integer size) {
+    Page<Application> getApplications(String filterKey, String filterValue, Pageable pageable) {
         FilterStrategy strategy = FilterStrategyFactory.getStrategy(filterKey);
-        return strategy.filter(this.applicationRepository, filterValue);
+        return strategy.filter(this.applicationRepository, filterValue, pageable);
     }
 }

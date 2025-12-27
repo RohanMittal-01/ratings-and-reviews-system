@@ -4,6 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import lombok.Data;
 
+import java.time.ZonedDateTime;
 import java.util.UUID;
 
 @Entity(name = "applications")
@@ -13,4 +14,6 @@ public class Application {
     private UUID id;
     private String name;
     private String description;
+    private ZonedDateTime createdAt;
+    private ZonedDateTime updatedAt;
 }

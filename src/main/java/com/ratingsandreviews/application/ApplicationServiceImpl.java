@@ -2,14 +2,14 @@ package com.ratingsandreviews.application;
 
 import com.ratingsandreviews.util.AppLogger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
 public class ApplicationServiceImpl implements ApplicationService {
-    private static final int MAX_PAGE_SIZE = 50;
-    private static final int DEFAULT_PAGE_SIZE = 50;
     private static final AppLogger logger = AppLogger.getInstance(ApplicationServiceImpl.class);
 
     private final ApplicationRepositoryWrapper applicationRepository;
@@ -25,13 +25,8 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
-    public List<Application> getApplications(String filterKey, String filterValue, String sort, String order, Integer page, Integer size) {
-        if(page == null) page = 0;
-        if(size == null) size = DEFAULT_PAGE_SIZE;
-        if(size > MAX_PAGE_SIZE) size = MAX_PAGE_SIZE;
-        if(sort == null) sort = "updatedAt";
-        if(order == null) order = "desc";
-        return this.applicationRepository.getApplications(filterKey, filterValue, sort, order, page, size);
+    public Page<Application> getApplications(String filterKey, String filterValue, Pageable pageable) {
+        return this.applicationRepository.getApplications(filterKey, filterValue, pageable);
     }
 
     @Override

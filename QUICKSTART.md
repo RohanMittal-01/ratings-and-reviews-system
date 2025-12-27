@@ -356,4 +356,14 @@ Now that you have the application running, you can:
 - Check application logs: `tail -f logs/application.log`
 - Create an issue in the GitHub repository
 
+## Appendix: Sample SQL to Populate Large Dataset
+To populate the `applications` table with 1 million sample records, you can use the following SQL script:
+
+```sql
+INSERT INTO applications (name)
+SELECT 'App_' || gs
+FROM generate_series(1, 1000000) AS gs;
+```
+
+
 Happy coding! 🚀

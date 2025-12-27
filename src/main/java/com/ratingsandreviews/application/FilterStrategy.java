@@ -1,7 +1,8 @@
 package com.ratingsandreviews.application;
 
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface FilterStrategy {
-    List<Application> filter(ApplicationRepository repository, String filterValue);
+    Page<Application> filter(ApplicationRepository repository, String filterValue, Pageable pageable);
 }
