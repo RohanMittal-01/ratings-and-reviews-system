@@ -35,9 +35,6 @@ ARCHITECTURE.md
 QUICKSTART.md
 LICENSE
 
-# Test files (not needed at runtime)
-src/test/
-
 # Docker files (not needed in image)
 Dockerfile
 docker-compose.yml

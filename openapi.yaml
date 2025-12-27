@@ -97,6 +97,7 @@ paths:
           description: The unique identifier of the application
           schema:
             type: string
+            format: uuid
       responses:
         '200':
           description: Application details
@@ -309,6 +310,7 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
           description: Average rating
@@ -332,6 +334,7 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
           description: Rating statistics
@@ -606,6 +609,7 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
         - name: userId
           in: query
           required: false

@@ -22,6 +22,9 @@ FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
 # Create a non-root user to run the application
 RUN addgroup -S spring && adduser -S spring -G spring
 
