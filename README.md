@@ -54,14 +54,22 @@ This setup provides:
 
 ## Getting Started
 
-### 1. Clone the Repository
+You can run the application in two ways:
+1. **Using Docker Compose** (Recommended) - Runs everything in containers
+2. **Local Development** - Run the application locally with Docker for database only
+
+### Option 1: Docker Compose (Recommended)
+
+This approach runs both the database cluster and the application in containers.
+
+#### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/RohanMittal-01/ratings-and-reviews-system.git
 cd ratings-and-reviews-system
 ```
 
-### 2. Start PostgreSQL Cluster
+#### 2. Start All Services
 
 ```bash
 docker-compose up -d
@@ -72,20 +80,76 @@ This will start:
 - PostgreSQL replica-1 on port 5433
 - PostgreSQL replica-2 on port 5434
 - PgBouncer on port 6432
+- **Ratings and Reviews Application on port 8080**
 
-Wait for all services to be healthy:
+#### 3. Verify Services are Running
 
 ```bash
 docker-compose ps
 ```
 
-### 3. Build the Application
+All services should show as "healthy" or "running".
+
+#### 4. Test the Application
+
+```bash
+# Health check
+curl http://localhost:8080/api/health
+
+# Database health check
+curl http://localhost:8080/api/health/db
+```
+
+#### 5. View Application Logs
+
+```bash
+docker-compose logs -f ratings-app
+```
+
+#### 6. Stop All Services
+
+```bash
+docker-compose down
+```
+
+To also remove volumes (database data):
+
+```bash
+docker-compose down -v
+```
+
+### Option 2: Local Development
+
+Run the application locally for development while using Docker for the database.
+
+#### 1. Clone the Repository
+
+```bash
+git clone https://github.com/RohanMittal-01/ratings-and-reviews-system.git
+cd ratings-and-reviews-system
+```
+
+#### 2. Start PostgreSQL Cluster Only
+
+To run only the database services without the application:
+
+```bash
+docker-compose up -d postgres-primary postgres-replica-1 postgres-replica-2 pgbouncer
+```
+
+Wait for all database services to be healthy:
+
+```bash
+docker-compose ps
+```
+
+#### 3. Build the Application
 
 ```bash
 ./gradlew clean build
 ```
 
-### 4. Run the Application
+#### 4. Run the Application Locally
 
 ```bash
 ./gradlew bootRun
@@ -101,7 +165,37 @@ The application will start on port 8080 by default.
 
 ## Configuration
 
-### Database Configuration
+### Environment Variables (Docker Compose)
+
+When running with Docker Compose, you can customize the application using environment variables. Create a `.env` file in the project root or set them in your shell:
+
+```bash
+# Database connection
+DB_URL=jdbc:postgresql://postgres-primary:5432/ratings_reviews
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+
+# Connection pool settings
+DB_POOL_SIZE=10
+DB_MIN_IDLE=5
+DB_CONNECTION_TIMEOUT=30000
+DB_IDLE_TIMEOUT=600000
+DB_MAX_LIFETIME=1800000
+
+# Server configuration
+SERVER_PORT=8080
+
+# Spring profiles
+SPRING_PROFILES_ACTIVE=default
+```
+
+Then start with:
+
+```bash
+docker-compose up -d
+```
+
+### Database Configuration (Local Development)
 
 You can configure the database connection using environment variables:
 
@@ -124,6 +218,23 @@ Edit `src/main/resources/application.yml` to customize:
 - Logging levels
 - JPA/Hibernate settings
 
+## API Documentation
+
+### OpenAPI Specification
+
+The complete API documentation is available in the `openapi.yaml` file at the project root. This file follows OpenAPI 3.0 standards and includes:
+
+- All endpoint definitions
+- Request/response schemas
+- Parameter descriptions
+- Example payloads
+- Authentication requirements
+
+You can view the API documentation using:
+- [Swagger Editor](https://editor.swagger.io/) - Paste the contents of `openapi.yaml`
+- [Swagger UI](https://swagger.io/tools/swagger-ui/) - Host the specification file
+- Any OpenAPI-compatible tool
+
 ## API Endpoints
 
 ### Health Check
@@ -134,6 +245,56 @@ curl http://localhost:8080/api/health
 
 # Database health check
 curl http://localhost:8080/api/health/db
+```
+
+### Applications
+
+```bash
+# Get all applications (paginated)
+curl "http://localhost:8080/api/v1/applications?page=0&size=10"
+
+# Get specific application
+curl http://localhost:8080/api/v1/applications/{applicationId}
+
+# Install an application
+curl -X POST http://localhost:8080/api/v1/applications/install \
+  -H "Content-Type: application/json" \
+  -d '{"applicationId": "123e4567-e89b-12d3-a456-426614174000"}'
+```
+
+### Ratings
+
+```bash
+# Get ratings for an application
+curl "http://localhost:8080/api/v1/ratings/{applicationId}?page=0&size=10"
+
+# Get average rating
+curl http://localhost:8080/api/v1/ratings/average/{applicationId}
+
+# Submit a rating
+curl -X POST http://localhost:8080/api/v1/ratings \
+  -H "Content-Type: application/json" \
+  -d '{"rating": 5, "applicationId": "123e4567-e89b-12d3-a456-426614174000", "userName": "john_doe"}'
+```
+
+### Comments/Reviews
+
+```bash
+# Get comments for an application
+curl "http://localhost:8080/api/v1/comments/application/{applicationId}?page=0&size=10"
+
+# Add a review (comment with no parent)
+curl -X POST http://localhost:8080/api/v1/comments \
+  -H "Content-Type: application/json" \
+  -d '{"applicationId": "123e4567-e89b-12d3-a456-426614174000", "userId": "223e4567-e89b-12d3-a456-426614174001", "text": "Great app!", "sentiment": 1}'
+
+# Update a comment
+curl -X PUT http://localhost:8080/api/v1/comments/{commentId} \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Updated comment", "sentiment": 1}'
+
+# Delete a comment
+curl -X DELETE "http://localhost:8080/api/v1/comments/{commentId}?applicationId={applicationId}"
 ```
 
 ## Utility Classes
@@ -194,19 +355,75 @@ Log rotation:
 
 ## Docker Commands
 
+### Full Stack (Database + Application)
+
 ```bash
-# Start the cluster
+# Start all services (database cluster + application)
 docker-compose up -d
 
-# Stop the cluster
+# Start with build (rebuild the application image)
+docker-compose up -d --build
+
+# View logs for all services
+docker-compose logs -f
+
+# View logs for specific service
+docker-compose logs -f ratings-app
+docker-compose logs -f postgres-primary
+
+# Stop all services
 docker-compose down
 
-# View logs
-docker-compose logs -f postgres-primary
-docker-compose logs -f postgres-replica-1
+# Stop and remove volumes (clean slate)
+docker-compose down -v
 
-# Access PostgreSQL
+# Restart the application service only
+docker-compose restart ratings-app
+
+# Rebuild and restart the application
+docker-compose up -d --build ratings-app
+```
+
+### Database Only
+
+```bash
+# Start only database services
+docker-compose up -d postgres-primary postgres-replica-1 postgres-replica-2 pgbouncer
+
+# Stop only database services
+docker-compose stop postgres-primary postgres-replica-1 postgres-replica-2 pgbouncer
+```
+
+### Docker Image Management
+
+```bash
+# Build the application Docker image manually
+docker build -t ratings-and-reviews-system:latest .
+
+# Run the application container manually
+docker run -d \
+  -p 8080:8080 \
+  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/ratings_reviews \
+  -e DB_USERNAME=postgres \
+  -e DB_PASSWORD=postgres \
+  --name ratings-app \
+  ratings-and-reviews-system:latest
+
+# View container logs
+docker logs -f ratings-app
+
+# Execute commands in the running container
+docker exec -it ratings-app sh
+```
+
+### Database Access
+
+```bash
+# Access PostgreSQL primary
 docker exec -it postgres-primary psql -U postgres -d ratings_reviews
+
+# Access PostgreSQL replica-1
+docker exec -it postgres-replica-1 psql -U postgres -d ratings_reviews
 
 # Check replication status
 docker exec -it postgres-primary psql -U postgres -c "SELECT * FROM pg_stat_replication;"
